@@ -4,6 +4,7 @@
  * Provides OpenAI-compatible API endpoints that wrap Claude Code CLI
  */
 
+import "./load-env.js";
 import express, { Express, Request, Response, NextFunction } from "express";
 import { createServer, Server } from "http";
 import { handleChatCompletions, handleModels, handleHealth } from "./routes.js";

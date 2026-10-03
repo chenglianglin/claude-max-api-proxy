@@ -97,6 +97,7 @@ export class ClaudeSubprocess extends EventEmitter {
         // Use spawn() for security - no shell interpretation
         this.process = spawn("claude", args, {
           cwd: options.cwd || process.cwd(),
+          // Keep shell and .env variables; only this flag is set by the proxy.
           env: { ...process.env, OPENCLAW_PROXY: "1" },
           stdio: ["pipe", "pipe", "pipe"],
         });
