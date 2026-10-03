@@ -50,6 +50,11 @@ async function main(): Promise<void> {
     console.log(`  curl -X POST http://localhost:${port}/v1/chat/completions \\`);
     console.log(`    -H "Content-Type: application/json" \\`);
     console.log(`    -d '{"model": "claude-sonnet-4", "messages": [{"role": "user", "content": "Hello!"}]}'`);
+    console.log("\nContinue one Claude session by reusing the same key:");
+    console.log(`  curl -X POST http://localhost:${port}/v1/chat/completions \\`);
+    console.log(`    -H "Content-Type: application/json" \\`);
+    console.log(`    -H "X-Claude-Session-Key: my-session" \\`);
+    console.log(`    -d '{"model": "claude-sonnet-4", "messages": [{"role": "user", "content": "Hello!"}]}'`);
     console.log("\nPress Ctrl+C to stop.\n");
   } catch (err) {
     console.error("Failed to start server:", err);

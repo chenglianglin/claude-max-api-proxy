@@ -113,8 +113,8 @@ function ensureString(value: unknown): string {
 
 function normalizeModelName(model: string | undefined): string {
   if (!model) return "claude-sonnet-4";
-  if (model.includes("opus")) return "claude-opus-4";
-  if (model.includes("sonnet")) return "claude-sonnet-4";
-  if (model.includes("haiku")) return "claude-haiku-4";
+  if (model.includes("opus")) return "claude-opus-5-5";
+  if (model.includes("sonnet")) return "claude-sonnet-5-5";
+  if (model.includes("haiku")) return "claude-haiku-4-5-20251001";
   return model;
 }

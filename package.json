@@ -12,7 +12,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/server/standalone.js",
-    "test": "node --test dist/**/*.test.js",
+    "test": "node --test dist/session/*.test.js dist/adapter/*.test.js dist/subprocess/*.test.js",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build"
   },

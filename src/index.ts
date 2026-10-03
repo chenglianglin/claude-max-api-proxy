@@ -12,25 +12,25 @@ import { verifyClaude, verifyAuth } from "./subprocess/manager.js";
 const PROVIDER_ID = "claude-code-cli";
 const PROVIDER_LABEL = "Claude Code CLI";
 const DEFAULT_PORT = 3456;
-const DEFAULT_MODEL = "claude-code-cli/claude-sonnet-4";
+const DEFAULT_MODEL = "claude-code-cli/claude-sonnet-5-5";
 
 // Available models
 const AVAILABLE_MODELS = [
   {
-    id: "claude-opus-4",
-    name: "Claude Opus 4.5",
+    id: "claude-opus-5-5",
+    name: "Claude Opus 5.5",
     alias: "opus",
     reasoning: true,
   },
   {
-    id: "claude-sonnet-4",
-    name: "Claude Sonnet 4",
+    id: "claude-sonnet-5-5",
+    name: "Claude Sonnet 5.5",
     alias: "sonnet",
     reasoning: false,
   },
   {
-    id: "claude-haiku-4",
-    name: "Claude Haiku 4",
+    id: "claude-haiku-4-5-20251001",
+    name: "Claude Haiku 4.5",
     alias: "haiku",
     reasoning: false,
   },

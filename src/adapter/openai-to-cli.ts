@@ -9,7 +9,8 @@ export type ClaudeModel = "opus" | "sonnet" | "haiku" | string;
 export interface CliInput {
   prompt: string;
   model: ClaudeModel;
-  sessionId?: string;
+  /** Stable client key. Mapped to a Claude session id; not passed to the CLI as-is. */
+  sessionKey?: string;
 }
 
 const MODEL_MAP: Record<string, ClaudeModel> = {
@@ -116,12 +117,26 @@ export function messagesToPrompt(messages: OpenAIChatRequest["messages"]): strin
 }
 
 /**
+ * Latest user turn only. Used when resuming a Claude session so the
+ * transcript is not appended a second time.
+ */
+export function latestUserPrompt(messages: OpenAIChatRequest["messages"]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== "user") continue;
+    const text = extractContentText(msg.content).trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+/**
  * Convert OpenAI chat request to CLI input format
  */
 export function openaiToCli(request: OpenAIChatRequest): CliInput {
   return {
     prompt: messagesToPrompt(request.messages),
     model: extractModel(request.model),
-    sessionId: request.user, // Use OpenAI's user field for session mapping
+    sessionKey: request.user?.trim() || undefined,
   };
 }

@@ -20,7 +20,16 @@ import type { ClaudeModel } from "../adapter/openai-to-cli.js";
 
 export interface SubprocessOptions {
   model: ClaudeModel;
+  /** Legacy id passed with --no-session-persistence. Does not resume a conversation. */
   sessionId?: string;
+  /**
+   * Persist the conversation. `create` uses --session-id, `resume` uses --resume.
+   * When set, --no-session-persistence is not passed.
+   */
+  session?: {
+    mode: "create" | "resume";
+    id: string;
+  };
   cwd?: string;
   timeout?: number;
 }
@@ -36,9 +45,43 @@ export interface SubprocessEvents {
 
 const DEFAULT_TIMEOUT = 900000; // 15 minutes (agentic tasks can be long)
 
+/**
+ * CLI flags for one Claude invocation.
+ * Persisted sessions omit --no-session-persistence so a later --resume can find them.
+ */
+export function buildClaudeArgs(options: SubprocessOptions): string[] {
+  const args = [
+    "--print",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--include-partial-messages",
+    "--model",
+    options.model,
+  ];
+
+  if (process.env.CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS === "true") {
+    args.push("--dangerously-skip-permissions");
+  }
+
+  if (options.session?.mode === "resume") {
+    args.push("--resume", options.session.id);
+  } else if (options.session?.mode === "create") {
+    args.push("--session-id", options.session.id);
+  } else {
+    args.push("--no-session-persistence");
+    if (options.sessionId) {
+      args.push("--session-id", options.sessionId);
+    }
+  }
+
+  return args;
+}
+
 export class ClaudeSubprocess extends EventEmitter {
   private process: ChildProcess | null = null;
   private buffer: string = "";
+  private stderrText: string = "";
   private timeoutId: NodeJS.Timeout | null = null;
   private isKilled: boolean = false;
 
@@ -70,15 +113,13 @@ export class ClaudeSubprocess extends EventEmitter {
         // Handle spawn errors (e.g., claude not found)
         this.process.on("error", (err) => {
           this.clearTimeout();
-          if (err.message.includes("ENOENT")) {
-            reject(
-              new Error(
+          const wrapped = err.message.includes("ENOENT")
+            ? new Error(
                 "Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
               )
-            );
-          } else {
-            reject(err);
-          }
+            : err;
+          this.emit("error", wrapped);
+          reject(wrapped);
         });
 
         // Pass prompt via stdin to avoid E2BIG with large prompts
@@ -97,11 +138,13 @@ export class ClaudeSubprocess extends EventEmitter {
 
         // Capture stderr for debugging
         this.process.stderr?.on("data", (chunk: Buffer) => {
-          const errorText = chunk.toString().trim();
-          if (errorText) {
+          const errorText = chunk.toString();
+          this.stderrText += errorText;
+          const trimmed = errorText.trim();
+          if (trimmed) {
             // Don't emit as error unless it's actually an error
             // Claude CLI may write debug info to stderr
-            console.error("[Subprocess stderr]:", errorText.slice(0, 200));
+            console.error("[Subprocess stderr]:", trimmed.slice(0, 200));
           }
         });
 
@@ -120,7 +163,9 @@ export class ClaudeSubprocess extends EventEmitter {
         resolve();
       } catch (err) {
         this.clearTimeout();
-        reject(err);
+        const wrapped = err instanceof Error ? err : new Error(String(err));
+        this.emit("error", wrapped);
+        reject(wrapped);
       }
     });
   }
@@ -130,27 +175,12 @@ export class ClaudeSubprocess extends EventEmitter {
    * Note: prompt is passed via stdin to avoid E2BIG errors with large prompts
    */
   private buildArgs(options: SubprocessOptions): string[] {
-    const args = [
-      "--print", // Non-interactive mode
-      "--output-format",
-      "stream-json", // JSON streaming output
-      "--verbose", // Required for stream-json
-      "--include-partial-messages", // Enable streaming chunks
-      "--model",
-      options.model, // Model alias (opus/sonnet/haiku)
-      "--no-session-persistence", // Don't save sessions
-    ];
+    return buildClaudeArgs(options);
+  }
 
-    // Support headless operation without permission prompts
-    if (process.env.CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS === "true") {
-      args.push("--dangerously-skip-permissions");
-    }
-
-    if (options.sessionId) {
-      args.push("--session-id", options.sessionId);
-    }
-
-    return args;
+  /** stderr captured from the Claude CLI process. */
+  getStderr(): string {
+    return this.stderrText;
   }
 
   /**

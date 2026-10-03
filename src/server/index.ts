@@ -36,7 +36,14 @@ function createApp(): Express {
   app.use((_req: Request, res: Response, next: NextFunction) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Claude-Session-Key"
+    );
+    res.setHeader(
+      "Access-Control-Expose-Headers",
+      "X-Claude-Session-Id, X-Claude-Session-Mode"
+    );
     next();
   });
 
