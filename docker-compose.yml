@@ -1,0 +1,44 @@
+services:
+  claude-bridge:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - /home/simon/.claude:/root/.claude
+    ports:
+      - "8081:8081"
+    container_name: claude-bridge
+    environment:
+      # Required — get from https://cursor.com/settings → API Keys
+      #- CURSOR_API_KEY=${CURSOR_API_KEY}
+
+      # Server
+      #- CURSORPIPE_HOST=0.0.0.0
+      #- CURSORPIPE_PORT=8080
+
+      # Optional: uncomment to protect the API with a bearer token
+      # - CURSORPIPE_BEARER_TOKEN=supersecret
+
+      # CORS: allow all origins by default (required for browser clients)
+      #- CURSORPIPE_CORS_ORIGINS=*
+
+      # Agent
+      #- CURSORPIPE_MODEL=composer-2.5
+      - CURSORPIPE_WORKSPACE=/opt/workspace
+
+      # Sessions
+      #- CURSORPIPE_SESSION_TTL_MINUTES=30
+
+      # Features
+      #- CURSORPIPE_EXPOSE_THINKING=low
+
+      # Logging (debug | info | warning | error | critical)
+      #- CURSORPIPE_LOG_LEVEL=error
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped

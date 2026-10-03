@@ -1,0 +1,40 @@
+FROM node
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    pkg-config \
+    nodejs npm mc ffmpeg\
+    curl socat \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/claude-max-api-proxy
+
+# 先複製 package 檔以利用 layer cache
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# 複製本機程式碼並編譯
+COPY . .
+RUN npm run build
+#RUN pwd && ls /app/claude-max-api-proxy/dist/server -lah
+
+# Install the package with server extras
+#COPY pyproject.toml README.md ./
+#COPY cursorpipe/ ./cursorpipe/
+#COPY cursorpipe_server/ ./cursorpipe_server/
+
+#RUN pip install --no-cache-dir ".[server]"
+
+EXPOSE 3456
+
+#RUN npm install -g @anthropic-ai/claude-code
+RUN curl -fsSL https://claude.ai/install.sh | bash
+ENV PATH="/root/.local/bin:${PATH}"
+
+#COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+#RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /opt/workspace
+
+#ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "-c", "socat TCP-LISTEN:8081,bind=0.0.0.0,fork,reuseaddr TCP:127.0.0.1:3456 & if claude auth status >/dev/null 2>&1; then echo 'Already logged in'; else claude auth login || exit $?; fi; exec node /app/claude-max-api-proxy/dist/server/standalone.js"]
