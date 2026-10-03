@@ -5,6 +5,7 @@
  */
 
 import "./load-env.js";
+import { isDebugEnabled } from "../debug.js";
 import express, { Express, Request, Response, NextFunction } from "express";
 import { createServer, Server } from "http";
 import { handleChatCompletions, handleModels, handleHealth } from "./routes.js";
@@ -27,7 +28,7 @@ function createApp(): Express {
 
   // Request logging (debug mode)
   app.use((req: Request, _res: Response, next: NextFunction) => {
-    if (process.env.DEBUG) {
+    if (isDebugEnabled()) {
       console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     }
     next();

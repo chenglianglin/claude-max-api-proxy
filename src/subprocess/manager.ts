@@ -17,6 +17,7 @@ import type {
 } from "../types/claude-cli.js";
 import { isAssistantMessage, isResultMessage, isContentDelta } from "../types/claude-cli.js";
 import type { ClaudeModel } from "../adapter/openai-to-cli.js";
+import { isDebugEnabled } from "../debug.js";
 
 export interface SubprocessOptions {
   model: ClaudeModel;
@@ -154,12 +155,16 @@ export class ClaudeSubprocess extends EventEmitter {
         this.process.stdin?.write(prompt);
         this.process.stdin?.end();
 
-        console.error(`[Subprocess] Process spawned with PID: ${this.process.pid}`);
+        if (isDebugEnabled()) {
+          console.error(`[Subprocess] Process spawned with PID: ${this.process.pid}`);
+        }
 
         // Parse JSON stream from stdout
         this.process.stdout?.on("data", (chunk: Buffer) => {
           const data = chunk.toString();
-          console.error(`[Subprocess] Received ${data.length} bytes of stdout`);
+          if (isDebugEnabled()) {
+            console.error(`[Subprocess] Received ${data.length} bytes of stdout`);
+          }
           this.buffer += data;
           this.processBuffer();
         });
@@ -178,7 +183,9 @@ export class ClaudeSubprocess extends EventEmitter {
 
         // Handle process close
         this.process.on("close", (code) => {
-          console.error(`[Subprocess] Process closed with code: ${code}`);
+          if (isDebugEnabled() || code !== 0) {
+            console.error(`[Subprocess] Process closed with code: ${code}`);
+          }
           this.clearTimeout();
           // Process any remaining buffer
           if (this.buffer.trim()) {
