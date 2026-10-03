@@ -78,6 +78,23 @@ export function buildClaudeArgs(options: SubprocessOptions): string[] {
   return args;
 }
 
+/**
+ * Environment passed to the Claude CLI process.
+ * Root cannot use --dangerously-skip-permissions unless Claude sees a sandbox.
+ * IS_SANDBOX=1 is the switch Claude itself checks for that case.
+ */
+export function claudeChildEnv(
+  base: NodeJS.ProcessEnv = process.env,
+  uid: number | undefined = typeof process.getuid === "function" ? process.getuid() : undefined
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...base, OPENCLAW_PROXY: "1" };
+  const skipPermissions = base.CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS === "true";
+  if (skipPermissions && uid === 0 && env.IS_SANDBOX === undefined) {
+    env.IS_SANDBOX = "1";
+  }
+  return env;
+}
+
 export class ClaudeSubprocess extends EventEmitter {
   private process: ChildProcess | null = null;
   private buffer: string = "";
@@ -95,10 +112,20 @@ export class ClaudeSubprocess extends EventEmitter {
     return new Promise((resolve, reject) => {
       try {
         // Use spawn() for security - no shell interpretation
+        const env = claudeChildEnv();
+        if (
+          process.getuid?.() === 0 &&
+          process.env.CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS === "true" &&
+          process.env.IS_SANDBOX === undefined
+        ) {
+          console.error(
+            "[Subprocess] Running as root; setting IS_SANDBOX=1 so Claude CLI allows --dangerously-skip-permissions"
+          );
+        }
         this.process = spawn("claude", args, {
           cwd: options.cwd || process.cwd(),
-          // Keep shell and .env variables; only this flag is set by the proxy.
-          env: { ...process.env, OPENCLAW_PROXY: "1" },
+          // Keep shell and .env variables. IS_SANDBOX is added only for root.
+          env,
           stdio: ["pipe", "pipe", "pipe"],
         });
 

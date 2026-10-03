@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildClaudeArgs } from "./manager.js";
+import { buildClaudeArgs, claudeChildEnv } from "./manager.js";
 
 const id = "206f4c71-9a32-4c3b-b8d1-9b94387ede84";
 
@@ -21,6 +21,32 @@ test("create persists a chosen session id", () => {
     "--session-id",
     id,
   ]);
+});
+
+test("root with skip-permissions is marked as a sandbox for Claude CLI", () => {
+  const env = claudeChildEnv(
+    { CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS: "true", HOME: "/root" },
+    0
+  );
+  assert.equal(env.IS_SANDBOX, "1");
+  assert.equal(env.OPENCLAW_PROXY, "1");
+  assert.equal(env.HOME, "/root");
+});
+
+test("non-root does not set IS_SANDBOX", () => {
+  const env = claudeChildEnv(
+    { CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS: "true" },
+    1000
+  );
+  assert.equal(env.IS_SANDBOX, undefined);
+});
+
+test("an existing IS_SANDBOX value is kept", () => {
+  const env = claudeChildEnv(
+    { CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS: "true", IS_SANDBOX: "0" },
+    0
+  );
+  assert.equal(env.IS_SANDBOX, "0");
 });
 
 test("resume continues that same session id", () => {
