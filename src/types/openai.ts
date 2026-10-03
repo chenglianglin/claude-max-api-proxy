@@ -40,17 +40,26 @@ export interface OpenAIChatResponseChoice {
   finish_reason: "stop" | "length" | "content_filter" | null;
 }
 
+export interface OpenAIUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  prompt_tokens_details?: {
+    cached_tokens: number;
+  };
+  /** Claude cache write tokens. Included in prompt_tokens. */
+  cache_creation_input_tokens?: number;
+  /** Claude cache read tokens. Included in prompt_tokens and cached_tokens. */
+  cache_read_input_tokens?: number;
+}
+
 export interface OpenAIChatResponse {
   id: string;
   object: "chat.completion";
   created: number;
   model: string;
   choices: OpenAIChatResponseChoice[];
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
+  usage: OpenAIUsage;
 }
 
 export interface OpenAIChatChunkDelta {
@@ -70,6 +79,7 @@ export interface OpenAIChatChunk {
   created: number;
   model: string;
   choices: OpenAIChatChunkChoice[];
+  usage?: OpenAIUsage;
 }
 
 export interface OpenAIModel {

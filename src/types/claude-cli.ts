@@ -41,6 +41,18 @@ export interface ClaudeCliAssistantContent {
   text: string;
 }
 
+/** Token counts from a Claude CLI assistant message, result, or modelUsage entry. */
+export interface ClaudeTokenUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
+}
+
 export interface ClaudeCliAssistant {
   type: "assistant";
   message: {
@@ -50,12 +62,7 @@ export interface ClaudeCliAssistant {
     role: "assistant";
     content: ClaudeCliAssistantContent[];
     stop_reason: string | null;
-    usage: {
-      input_tokens: number;
-      output_tokens: number;
-      cache_creation_input_tokens?: number;
-      cache_read_input_tokens?: number;
-    };
+    usage: ClaudeTokenUsage;
   };
   session_id: string;
   uuid: string;
@@ -71,17 +78,8 @@ export interface ClaudeCliResult {
   result: string;
   session_id: string;
   total_cost_usd: number;
-  usage: {
-    input_tokens: number;
-    output_tokens: number;
-    cache_creation_input_tokens?: number;
-    cache_read_input_tokens?: number;
-  };
-  modelUsage: Record<string, {
-    inputTokens: number;
-    outputTokens: number;
-    costUSD: number;
-  }>;
+  usage: ClaudeTokenUsage;
+  modelUsage?: Record<string, ClaudeTokenUsage & { costUSD?: number }>;
 }
 
 export interface ClaudeCliSystemMessage {

@@ -2,8 +2,9 @@
  * Converts Claude CLI output to OpenAI-compatible response format
  */
 
-import type { ClaudeCliAssistant, ClaudeCliResult } from "../types/claude-cli.js";
-import type { OpenAIChatResponse, OpenAIChatChunk } from "../types/openai.js";
+import type { ClaudeCliAssistant, ClaudeCliResult, ClaudeTokenUsage } from "../types/claude-cli.js";
+import type { OpenAIChatResponse, OpenAIChatChunk, OpenAIUsage } from "../types/openai.js";
+import { claudeUsageToOpenai, modelUsageToClaude, selectCliUsage } from "./usage.js";
 
 /**
  * Extract text content from Claude CLI assistant message
@@ -46,7 +47,11 @@ export function cliToOpenaiChunk(
 /**
  * Create a final "done" chunk for streaming
  */
-export function createDoneChunk(requestId: string, model: string): OpenAIChatChunk {
+export function createDoneChunk(
+  requestId: string,
+  model: string,
+  usage?: OpenAIUsage
+): OpenAIChatChunk {
   return {
     id: `chatcmpl-${requestId}`,
     object: "chat.completion.chunk",
@@ -59,7 +64,22 @@ export function createDoneChunk(requestId: string, model: string): OpenAIChatChu
         finish_reason: "stop",
       },
     ],
+    usage,
   };
+}
+
+/** Prefer the CLI usage object that includes cache tokens, not only raw input. */
+export function usageForResult(
+  result: ClaudeCliResult,
+  assistantUsage?: ClaudeTokenUsage
+): OpenAIUsage {
+  return claudeUsageToOpenai(
+    selectCliUsage([
+      result.usage,
+      modelUsageToClaude(result.modelUsage),
+      assistantUsage,
+    ])
+  );
 }
 
 /**
@@ -89,12 +109,7 @@ export function cliResultToOpenai(
         finish_reason: "stop",
       },
     ],
-    usage: {
-      prompt_tokens: result.usage?.input_tokens || 0,
-      completion_tokens: result.usage?.output_tokens || 0,
-      total_tokens:
-        (result.usage?.input_tokens || 0) + (result.usage?.output_tokens || 0),
-    },
+    usage: usageForResult(result),
   };
 }
 

@@ -11,9 +11,10 @@ import { extractModel, latestUserPrompt, messagesToPrompt } from "../adapter/ope
 import {
   cliResultToOpenai,
   createDoneChunk,
+  usageForResult,
 } from "../adapter/cli-to-openai.js";
 import type { OpenAIChatRequest } from "../types/openai.js";
-import type { ClaudeCliAssistant, ClaudeCliResult, ClaudeCliStreamEvent } from "../types/claude-cli.js";
+import type { ClaudeCliAssistant, ClaudeCliResult, ClaudeCliStreamEvent, ClaudeTokenUsage } from "../types/claude-cli.js";
 import { sessionManager, type SessionPlan } from "../session/manager.js";
 import { resolveClientSessionKey } from "../session/key.js";
 import { shouldRestartSession } from "../session/resume.js";
@@ -89,6 +90,7 @@ interface CliOutcome {
   result: ClaudeCliResult | null;
   message: string;
   model: string;
+  assistantUsage?: ClaudeTokenUsage;
 }
 
 function sessionOptions(plan: SessionPlan | undefined, model: string): SubprocessOptions {
@@ -129,12 +131,13 @@ function executeClaude(
     let sentContent = false;
     let result: ClaudeCliResult | null = null;
     let model = "claude-sonnet-4";
+    let assistantUsage: ClaudeTokenUsage | undefined;
     let settled = false;
 
     const finish = (ok: boolean, message: string) => {
       if (settled) return;
       settled = true;
-      resolve({ ok, sentContent, result, message, model });
+      resolve({ ok, sentContent, result, message, model, assistantUsage });
     };
 
     subprocess.on("content_delta", (event: ClaudeCliStreamEvent) => {
@@ -147,6 +150,7 @@ function executeClaude(
     subprocess.on("assistant", (message: ClaudeCliAssistant) => {
       model = message.message.model;
       onModel(model);
+      if (message.message.usage) assistantUsage = message.message.usage;
     });
 
     subprocess.on("result", (message: ClaudeCliResult) => {
@@ -263,13 +267,16 @@ async function runChatCompletion(
       succeeded = true;
       if (stream) {
         if (!res.writableEnded) {
-          res.write(`data: ${JSON.stringify(createDoneChunk(requestId, lastModel))}\n\n`);
+          const usage = usageForResult(outcome.result, outcome.assistantUsage);
+          res.write(`data: ${JSON.stringify(createDoneChunk(requestId, lastModel, usage))}\n\n`);
           res.write("data: [DONE]\n\n");
           res.end();
         }
       } else {
         setSessionHeaders(res, plan);
-        res.json(cliResultToOpenai(outcome.result, requestId));
+        const response = cliResultToOpenai(outcome.result, requestId);
+        response.usage = usageForResult(outcome.result, outcome.assistantUsage);
+        res.json(response);
       }
       return;
     }
