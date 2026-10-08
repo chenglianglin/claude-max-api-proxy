@@ -58,19 +58,34 @@ export function envFileCandidates(): string[] {
 
 export function loadEnvFiles(): string[] {
   const applied: string[] = [];
-  for (const file of envFileCandidates()) {
+  const candidates = envFileCandidates();
+  let found = false;
+
+  for (const file of candidates) {
     let text: string;
     try {
       text = fs.readFileSync(file, "utf8");
     } catch {
+      console.error(`[env] Not found: ${file}`);
       continue;
     }
-    const added = applyEnv(parseEnv(text));
-    if (added.length > 0) {
-      console.error(`[env] Kept ${added.length} variables from ${file}`);
-      applied.push(...added);
-    }
+
+    found = true;
+    const parsed = parseEnv(text);
+    const added = applyEnv(parsed);
+    const alreadySet = Object.keys(parsed).filter((key) => !added.includes(key));
+    console.error(
+      `[env] Read ${file}: applied [${added.join(", ")}], already set [${alreadySet.join(", ")}]`
+    );
+    applied.push(...added);
   }
+
+  if (!found) {
+    console.error(
+      `[env] No .env loaded. cwd=${process.cwd()} checked: ${candidates.join(", ")}`
+    );
+  }
+
   return applied;
 }
 
