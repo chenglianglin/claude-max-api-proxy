@@ -4,9 +4,11 @@ services:
     env_file:
       - .env
     volumes:
-      - /home/simon/.claude:/root/.claude
+      - /home/simon/claude-auth:/root/.claude
+      - /home/simon/claude-data:/opt/workspace
+      - /home/simon/claude-data/.claude-code-cli-sessions.json:/root/.claude-code-cli-sessions.json
     ports:
-      - "8081:8081"
+      - 8081:8081
     container_name: claude-bridge
     environment:
       # Required — get from https://cursor.com/settings → API Keys

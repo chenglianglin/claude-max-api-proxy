@@ -22,3 +22,19 @@ test("rejects keys Claude would not keep as one mapping", () => {
   const result = resolveClientSessionKey(undefined, "line\nbreak");
   assert.equal(typeof result.error, "string");
 });
+
+test("x-user-id namespaces the session key", () => {
+  assert.deepEqual(resolveClientSessionKey("chat-1", undefined, "alice"), {
+    key: "alice:chat-1",
+  });
+  assert.notDeepEqual(
+    resolveClientSessionKey("chat-1", undefined, "alice"),
+    resolveClientSessionKey("chat-1", undefined, "bob")
+  );
+});
+
+test("x-user-id alone gives one session per user", () => {
+  assert.deepEqual(resolveClientSessionKey(undefined, undefined, " alice "), {
+    key: "alice",
+  });
+});

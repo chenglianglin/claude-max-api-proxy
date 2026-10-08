@@ -47,7 +47,8 @@ export async function handleChatCompletions(
 
     const keyResult = resolveClientSessionKey(
       req.header("x-claude-session-key") ?? undefined,
-      body.user
+      body.user,
+      req.header("x-user-id") ?? undefined
     );
     if (keyResult.error) {
       res.status(400).json({

@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     nodejs npm mc ffmpeg\
     curl socat \
+    python3 python3-pip python3-matplotlib python3-pandas python3-requests \
+    fonts-wqy-zenhei \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/claude-max-api-proxy
