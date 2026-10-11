@@ -33,6 +33,8 @@ export interface SubprocessOptions {
   };
   cwd?: string;
   timeout?: number;
+  /** From X-Claude-Session-Key user_id:chat_id. Exposed as CLAUDE_PROXY_USER_ID. */
+  callerUserId?: string;
 }
 
 export interface SubprocessEvents {
@@ -86,12 +88,18 @@ export function buildClaudeArgs(options: SubprocessOptions): string[] {
  */
 export function claudeChildEnv(
   base: NodeJS.ProcessEnv = process.env,
-  uid: number | undefined = typeof process.getuid === "function" ? process.getuid() : undefined
+  uid: number | undefined = typeof process.getuid === "function" ? process.getuid() : undefined,
+  callerUserId?: string
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base, OPENCLAW_PROXY: "1" };
   const skipPermissions = base.CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS === "true";
   if (skipPermissions && uid === 0 && env.IS_SANDBOX === undefined) {
     env.IS_SANDBOX = "1";
+  }
+  if (callerUserId) {
+    env.CLAUDE_PROXY_USER_ID = callerUserId;
+  } else {
+    delete env.CLAUDE_PROXY_USER_ID;
   }
   return env;
 }
@@ -113,7 +121,7 @@ export class ClaudeSubprocess extends EventEmitter {
     return new Promise((resolve, reject) => {
       try {
         // Use spawn() for security - no shell interpretation
-        const env = claudeChildEnv();
+        const env = claudeChildEnv(process.env, process.getuid?.(), options.callerUserId);
         if (
           process.getuid?.() === 0 &&
           process.env.CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS === "true" &&
