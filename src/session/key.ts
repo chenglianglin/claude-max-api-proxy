@@ -27,3 +27,17 @@ export function resolveClientSessionKey(
   }
   return { key: raw };
 }
+
+/**
+ * Open WebUI sends X-Claude-Session-Key as user_id:chat_id.
+ * Other keys stay session keys only and do not yield a caller id.
+ */
+export function callerUserIdFromSessionKey(key: string | undefined): string | undefined {
+  if (!key) return undefined;
+  const colon = key.indexOf(":");
+  if (colon <= 0 || colon >= key.length - 1) return undefined;
+  const userId = key.slice(0, colon).trim();
+  const chatId = key.slice(colon + 1).trim();
+  if (!userId || !chatId) return undefined;
+  return userId;
+}

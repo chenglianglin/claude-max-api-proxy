@@ -41,6 +41,13 @@ test("non-root does not set IS_SANDBOX", () => {
   assert.equal(env.IS_SANDBOX, undefined);
 });
 
+test("caller user id is visible to Claude and not inherited otherwise", () => {
+  const withUser = claudeChildEnv({ CLAUDE_PROXY_USER_ID: "stale" }, 1000, "3f2a");
+  assert.equal(withUser.CLAUDE_PROXY_USER_ID, "3f2a");
+  const withoutUser = claudeChildEnv({ CLAUDE_PROXY_USER_ID: "stale" }, 1000);
+  assert.equal(withoutUser.CLAUDE_PROXY_USER_ID, undefined);
+});
+
 test("an existing IS_SANDBOX value is kept", () => {
   const env = claudeChildEnv(
     { CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS: "true", IS_SANDBOX: "0" },

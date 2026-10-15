@@ -16,7 +16,7 @@ import {
 import type { OpenAIChatRequest } from "../types/openai.js";
 import type { ClaudeCliAssistant, ClaudeCliResult, ClaudeCliStreamEvent, ClaudeTokenUsage } from "../types/claude-cli.js";
 import { sessionManager, type SessionPlan } from "../session/manager.js";
-import { resolveClientSessionKey } from "../session/key.js";
+import { callerUserIdFromSessionKey, resolveClientSessionKey } from "../session/key.js";
 import { shouldRestartSession } from "../session/resume.js";
 
 /**
@@ -61,8 +61,9 @@ export async function handleChatCompletions(
       return;
     }
 
+    const callerUserId = callerUserIdFromSessionKey(keyResult.key);
     const run = () =>
-      runChatCompletion(res, body, requestId, stream, keyResult.key);
+      runChatCompletion(res, body, requestId, stream, keyResult.key, callerUserId);
 
     if (keyResult.key) {
       await sessionManager.runExclusive(keyResult.key, run);
@@ -94,10 +95,15 @@ interface CliOutcome {
   assistantUsage?: ClaudeTokenUsage;
 }
 
-function sessionOptions(plan: SessionPlan | undefined, model: string): SubprocessOptions {
+function sessionOptions(
+  plan: SessionPlan | undefined,
+  model: string,
+  callerUserId: string | undefined
+): SubprocessOptions {
   return {
     model,
     cwd: plan?.cwd,
+    callerUserId,
     session: plan
       ? { mode: plan.mode, id: plan.claudeSessionId }
       : undefined,
@@ -186,7 +192,8 @@ async function runChatCompletion(
   body: OpenAIChatRequest,
   requestId: string,
   stream: boolean,
-  sessionKey: string | undefined
+  sessionKey: string | undefined,
+  callerUserId: string | undefined
 ): Promise<void> {
   const model = extractModel(body.model);
   const fullPrompt = messagesToPrompt(body.messages);
@@ -233,7 +240,7 @@ async function runChatCompletion(
 
     const outcome = await executeClaude(
       prompt,
-      sessionOptions(plan, model),
+      sessionOptions(plan, model, callerUserId),
       (text) => {
         if (!stream || res.writableEnded || clientGone) return;
         const chunk = {

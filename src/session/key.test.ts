@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveClientSessionKey } from "./key.js";
+import { callerUserIdFromSessionKey, resolveClientSessionKey } from "./key.js";
 
 test("header overrides the OpenAI user field", () => {
   assert.deepEqual(resolveClientSessionKey(" chat-1 ", "other"), {
@@ -16,6 +16,14 @@ test("user field is the key when the header is empty", () => {
 
 test("missing key stays stateless", () => {
   assert.deepEqual(resolveClientSessionKey(undefined, "  "), {});
+});
+
+test("user id is the part before the colon", () => {
+  assert.equal(callerUserIdFromSessionKey("3f2a:9c1b"), "3f2a");
+  assert.equal(callerUserIdFromSessionKey(" 3f2a : 9c1b "), "3f2a");
+  assert.equal(callerUserIdFromSessionKey("my-session"), undefined);
+  assert.equal(callerUserIdFromSessionKey(":chat"), undefined);
+  assert.equal(callerUserIdFromSessionKey("user:"), undefined);
 });
 
 test("rejects keys Claude would not keep as one mapping", () => {
